@@ -69,6 +69,35 @@ export async function registerUser(prevState: any, formData: FormData) {
     }
   }
 
+  // Send email notification on registration
+  const resendKey = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_EMAIL;
+
+  if (resendKey && adminEmail) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${resendKey}`,
+        },
+        body: JSON.stringify({
+          from: "Mundialario <onboarding@resend.dev>",
+          to: adminEmail,
+          subject: `🎉 ¡Nuevo Registro: ${name}!`,
+          html: `<p>Se ha registrado un nuevo usuario en Mundialario:</p>
+                 <ul>
+                   <li><strong>Nombre:</strong> ${name}</li>
+                   <li><strong>Correo:</strong> ${email}</li>
+                   <li><strong>Liga unida:</strong> ${leagueCode && leagueCode.trim() ? leagueCode.trim().toUpperCase() : "Ninguna"}</li>
+                 </ul>`,
+        }),
+      });
+    } catch (e) {
+      console.error("Error enviando correo de registro", e);
+    }
+  }
+
   // 3. Return success to allow frontend celebration
   return { error: "", success: true };
 }

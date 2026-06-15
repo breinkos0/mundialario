@@ -948,7 +948,7 @@ export default function DashboardPage() {
               <div className="bg-gradient-to-r from-violet-700 via-indigo-600 to-blue-600 text-white p-6 rounded-3xl shadow-lg border border-violet-800 select-none flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <span className="bg-lime-400 text-slate-900 font-black text-[10px] tracking-wider uppercase px-3 py-1 rounded-full">
-                    Fase de Grupos
+                    Juegos de las próximas Jornadas
                   </span>
                   <h2 className="text-2xl sm:text-3xl font-black uppercase mt-3 tracking-tight">
                     🔮 PRONOSTICA TUS GOLES
@@ -1401,7 +1401,7 @@ export default function DashboardPage() {
               {/* Header info */}
               <div className="bg-gradient-to-r from-violet-700 to-purple-600 text-white p-6 rounded-3xl shadow-lg border border-violet-800 select-none">
                 <span className="bg-lime-400 text-violet-950 font-black text-[10px] tracking-wider uppercase px-3 py-1 rounded-full">
-                  Competencia
+                  Competencia en Ligas
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black uppercase mt-3 tracking-tight">
                   🏆 MIS LIGAS Y GRUPOS
@@ -1417,8 +1417,8 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => setLeaguesViewMode("my-leagues")}
                   className={`flex-1 py-3.5 text-center font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${leaguesViewMode === "my-leagues"
-                      ? "border-violet-700 text-violet-700 font-black"
-                      : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-violet-700 text-violet-700 font-black"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
                     }`}
                 >
                   <Users className="w-4 h-4" />
@@ -1428,8 +1428,8 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => setLeaguesViewMode("ligaverso")}
                   className={`flex-1 py-3.5 text-center font-extrabold text-xs uppercase tracking-wider border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${leaguesViewMode === "ligaverso"
-                      ? "border-violet-700 text-violet-700 font-black"
-                      : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-violet-700 text-violet-700 font-black"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
                     }`}
                 >
                   <Globe className="w-4 h-4" />
@@ -1613,7 +1613,7 @@ export default function DashboardPage() {
                             className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
                           />
                           <label htmlFor="isPublicLeague" className="text-xs text-slate-600 font-semibold cursor-pointer">
-                            ¿Hacer esta liga pública? (Aparecerá en el LigaVerso)
+                            ¿Hacer esta liga pública? (Aparecerá en el LigaVerso y se podrá unir culquier persona sin invitación)
                           </label>
                         </div>
                         <button

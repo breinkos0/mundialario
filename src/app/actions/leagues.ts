@@ -39,7 +39,7 @@ export async function createLeague(name: string, isPublic = false) {
   // 2. Resolve internal user ID (Format: USR-XXX)
   const { data: dbUser, error: dbUserError } = await supabase
     .from("users")
-    .select("id")
+    .select("id, name")
     .eq("auth_id", authUser.id)
     .single();
 
@@ -96,6 +96,36 @@ export async function createLeague(name: string, isPublic = false) {
 
   if (memberError) {
     return { error: `Error al agregarte a la liga: ${memberError.message}` };
+  }
+
+  // Send email notification on league creation
+  const resendKey = process.env.RESEND_API_KEY;
+  const adminEmail = process.env.ADMIN_EMAIL;
+
+  if (resendKey && adminEmail) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${resendKey}`,
+        },
+        body: JSON.stringify({
+          from: "Mundialario <onboarding@resend.dev>",
+          to: adminEmail,
+          subject: `🏆 ¡Nueva Liga Creada: ${name.trim()}!`,
+          html: `<p>Se ha creado una nueva liga en Mundialario:</p>
+                 <ul>
+                   <li><strong>Nombre de la Liga:</strong> ${name.trim()}</li>
+                   <li><strong>Creador:</strong> ${dbUser.name} (ID: ${userId})</li>
+                   <li><strong>Código de Invitación:</strong> ${inviteCode}</li>
+                   <li><strong>Pública:</strong> ${isPublic ? "Sí" : "No"}</li>
+                 </ul>`,
+        }),
+      });
+    } catch (e) {
+      console.error("Error enviando correo de creación de liga", e);
+    }
   }
 
   revalidatePath("/dashboard");
@@ -294,5 +324,144 @@ export async function joinPublicLeague(leagueId: string) {
     return { success: true, leagueName: league.name };
   } catch (err: any) {
     return { error: err.message || "Error al unirte a la liga pública." };
+  }
+}
+
+export async function leaveLeague(leagueId: string) {
+  try {
+    const supabase = await createClient();
+
+    // 1. Get current authenticated user
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { error: "No estás autenticado." };
+    }
+
+    // 2. Resolve internal user ID
+    const { data: dbUser, error: dbUserError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (dbUserError || !dbUser) {
+      return { error: "Error al resolver la información de tu usuario." };
+    }
+
+    const userId = dbUser.id;
+
+    // 3. Check if owner of the league
+    const { data: league, error: leagueError } = await supabase
+      .from("leagues")
+      .select("owner_id, name")
+      .eq("id", leagueId)
+      .single();
+
+    if (leagueError || !league) {
+      return { error: "No se encontró la liga especificada." };
+    }
+
+    if (league.owner_id === userId) {
+      return { error: "Como creador de la liga no puedes abandonarla. Debes eliminarla si deseas cerrarla." };
+    }
+
+    // 4. Delete membership
+    const { error: deleteError } = await supabase
+      .from("league_members")
+      .delete()
+      .eq("league_id", leagueId)
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      return { error: `Error al abandonar la liga: ${deleteError.message}` };
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true, leagueName: league.name };
+  } catch (err: any) {
+    return { error: err.message || "Error al abandonar la liga." };
+  }
+}
+
+export async function deleteLeague(leagueId: string, leagueNameConfirmation: string) {
+  try {
+    const supabase = await createClient();
+
+    // 1. Get current authenticated user
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { error: "No estás autenticado." };
+    }
+
+    // 2. Resolve internal user ID
+    const { data: dbUser, error: dbUserError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (dbUserError || !dbUser) {
+      return { error: "Error al resolver la información de tu usuario." };
+    }
+
+    const userId = dbUser.id;
+
+    // 3. Fetch league to verify ownership and name matching
+    const { data: league, error: leagueError } = await supabase
+      .from("leagues")
+      .select("id, name, owner_id")
+      .eq("id", leagueId)
+      .single();
+
+    if (leagueError || !league) {
+      return { error: "No se encontró la liga especificada." };
+    }
+
+    if (league.owner_id !== userId) {
+      return { error: "No tienes permisos para eliminar esta liga. Solo el creador de la liga puede hacerlo." };
+    }
+
+    if (league.name.trim().toLowerCase() !== leagueNameConfirmation.trim().toLowerCase()) {
+      return { error: "El nombre ingresado no coincide con el nombre de la liga." };
+    }
+
+    // 4. Delete votes for the league posts
+    const { data: posts } = await supabase
+      .from("league_posts")
+      .select("id")
+      .eq("league_id", leagueId);
+
+    if (posts && posts.length > 0) {
+      const postIds = posts.map(p => p.id);
+      await supabase
+        .from("poll_votes")
+        .delete()
+        .in("post_id", postIds);
+    }
+
+    // 5. Delete posts, members and finally the league
+    await supabase
+      .from("league_posts")
+      .delete()
+      .eq("league_id", leagueId);
+
+    await supabase
+      .from("league_members")
+      .delete()
+      .eq("league_id", leagueId);
+
+    const { error: deleteLeagueError } = await supabase
+      .from("leagues")
+      .delete()
+      .eq("id", leagueId);
+
+    if (deleteLeagueError) {
+      return { error: `Error al eliminar la liga: ${deleteLeagueError.message}` };
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || "Error al eliminar la liga." };
   }
 }

@@ -181,10 +181,16 @@ export async function deletePost(postId: string) {
 
   const userId = dbUser.id;
 
-  // 3. Fetch the post to retrieve league_id and verify owner
+  // 3. Fetch the post to retrieve league_id, user_id and verify owner/league owner
   const { data: post, error: postError } = await supabase
     .from("league_posts")
-    .select("league_id, user_id")
+    .select(`
+      league_id,
+      user_id,
+      leagues (
+        owner_id
+      )
+    `)
     .eq("id", postId)
     .single();
 
@@ -192,7 +198,14 @@ export async function deletePost(postId: string) {
     return { error: "No se encontró la publicación o ya fue eliminada." };
   }
 
-  if (post.user_id !== userId) {
+  const leagueOwnerId = Array.isArray(post.leagues)
+    ? (post.leagues[0] as any)?.owner_id
+    : (post.leagues as any)?.owner_id;
+
+  const isPostAuthor = post.user_id === userId;
+  const isLeagueOwner = leagueOwnerId === userId;
+
+  if (!isPostAuthor && !isLeagueOwner) {
     return { error: "No tienes permisos para eliminar esta publicación." };
   }
 
@@ -200,8 +213,7 @@ export async function deletePost(postId: string) {
   const { error: deleteError } = await supabase
     .from("league_posts")
     .delete()
-    .eq("id", postId)
-    .eq("user_id", userId);
+    .eq("id", postId);
 
   if (deleteError) {
     return { error: `Error al eliminar la publicación: ${deleteError.message}` };

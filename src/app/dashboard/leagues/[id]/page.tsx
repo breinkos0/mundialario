@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { createPost, votePoll, deletePost } from "@/app/actions/posts";
+import { leaveLeague, deleteLeague } from "@/app/actions/leagues";
 import {
   Gamepad2,
   Users,
@@ -101,6 +102,53 @@ export default function LeagueDetailPage() {
   // Delete modal states
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
+
+  // Leave/Delete League States
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [isDeletingLeague, setIsDeletingLeague] = useState(false);
+
+  const handleLeaveLeague = async () => {
+    setIsLeaving(true);
+    try {
+      const res = await leaveLeague(leagueId);
+      if (res.error) {
+        alert(res.error);
+        setIsLeaving(false);
+      } else {
+        setShowLeaveModal(false);
+        router.push("/dashboard?tab=leagues");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error al intentar abandonar la liga.");
+      setIsLeaving(false);
+    }
+  };
+
+  const handleDeleteLeague = async () => {
+    setIsDeletingLeague(true);
+    try {
+      const res = await deleteLeague(leagueId, deleteConfirmationText);
+      if (res.error) {
+        alert(res.error);
+        setIsDeletingLeague(false);
+      } else {
+        setShowDeleteModal(false);
+        router.push("/dashboard?tab=leagues");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error al intentar eliminar la liga.");
+      setIsDeletingLeague(false);
+    }
+  };
+
+  const isLeagueOwner = profile?.id === league?.owner_id;
 
   // Tab controller state
   const [leagueTab, setLeagueTab] = useState<"trash" | "leaderboard">("trash");
@@ -1023,6 +1071,8 @@ export default function LeagueDetailPage() {
                   posts.map(post => {
                     const relativeTime = formatRelativeTime(post.created_at);
                     const isAuthor = post.user_id === profile?.id;
+                    const isLeagueOwner = profile?.id === league?.owner_id;
+                    const canDelete = isAuthor || isLeagueOwner;
 
                     // Poll states
                     const postVotes = votes.filter(v => v.post_id === post.id);
@@ -1070,7 +1120,7 @@ export default function LeagueDetailPage() {
                             <span className="text-[10px] text-slate-400 font-bold uppercase">
                               {relativeTime}
                             </span>
-                            {isAuthor && (
+                            {canDelete && (
                               <button
                                 type="button"
                                 onClick={() => handleDeletePost(post.id)}
@@ -1255,6 +1305,38 @@ export default function LeagueDetailPage() {
                 </div>
               </div>
 
+              {/* Zona de Peligro (Danger Zone) */}
+              <div className="bg-white border border-red-100 rounded-3xl p-6 shadow-sm space-y-4 mt-6">
+                <h3 className="text-sm font-black text-red-600 uppercase tracking-tight flex items-center gap-1.5 select-none">
+                  <span>⚠️ Zona de Peligro</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                  {isLeagueOwner
+                    ? "Como creador de la liga, puedes eliminarla de forma permanente. Se borrarán todos los miembros, mensajes del muro y registros."
+                    : "Si abandonas esta liga, ya no aparecerás en la clasificación ni tendrás acceso a su muro de Trash Talk."}
+                </p>
+                
+                {isLeagueOwner ? (
+                  <button
+                    onClick={() => {
+                      setDeleteStep(1);
+                      setDeleteConfirmationText("");
+                      setShowDeleteModal(true);
+                    }}
+                    className="w-full sm:w-auto px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    Eliminar Liga
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowLeaveModal(true)}
+                    className="w-full sm:w-auto px-5 py-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-2xl text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    Abandonar Liga
+                  </button>
+                )}
+              </div>
+
             </div>
           )}
         </main>
@@ -1432,6 +1514,133 @@ export default function LeagueDetailPage() {
                 <span>Compartir en Historias / Redes</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* LEAVE LEAGUE CONFIRMATION MODAL */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs select-none p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shrink-0">
+              <AlertCircle className="w-6 h-6 animate-bounce" />
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">¿Abandonar esta liga?</h3>
+              <p className="text-xs font-semibold text-slate-450 leading-relaxed">
+                ¿Estás seguro de que deseas abandonar la liga <strong className="text-violet-750 font-black">"{league?.name}"</strong>? Esta es la segunda confirmación. Perderás tu puesto en la clasificación de forma permanente.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 w-full mt-2">
+              <button
+                type="button"
+                disabled={isLeaving}
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isLeaving}
+                onClick={handleLeaveLeague}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center gap-1.5"
+              >
+                {isLeaving ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Saliendo...</span>
+                  </>
+                ) : (
+                  <span>Sí, abandonar</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE LEAGUE CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs select-none p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shrink-0">
+              <Trash2 className="w-6 h-6 animate-pulse" />
+            </div>
+
+            {deleteStep === 1 ? (
+              <>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">¿Eliminar liga completa?</h3>
+                  <p className="text-xs font-semibold text-slate-450 leading-relaxed">
+                    Esta acción es irreversible y destruirá la liga <strong className="text-red-600 font-black">"{league?.name}"</strong> junto con todos sus miembros, predicciones internas y el chat. Esta es la segunda confirmación.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 w-full mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteStep(2)}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors cursor-pointer shadow-md"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2 w-full">
+                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Tercera Confirmación</h3>
+                  <p className="text-xs font-semibold text-slate-400 leading-relaxed">
+                    Por favor escribe el nombre de la liga para confirmar la eliminación definitiva:
+                  </p>
+                  <div className="bg-slate-50 border border-slate-200 text-red-600 font-black text-xs p-3 rounded-2xl select-all select-none">
+                    {league?.name}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Escribe el nombre de la liga..."
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 text-center"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 w-full mt-2">
+                  <button
+                    type="button"
+                    disabled={isDeletingLeague}
+                    onClick={() => setDeleteStep(1)}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingLeague || deleteConfirmationText.trim().toLowerCase() !== league?.name.trim().toLowerCase()}
+                    onClick={handleDeleteLeague}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-colors disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    {isDeletingLeague ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Eliminando...</span>
+                      </>
+                    ) : (
+                      <span>Eliminar definitivamente</span>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
