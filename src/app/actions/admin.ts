@@ -32,7 +32,7 @@ async function verifyAdmin(supabase: any) {
 
   const { data: dbUser, error: dbUserError } = await supabase
     .from("users")
-    .select("is_admin")
+    .select("id, is_admin")
     .eq("auth_id", authUser.id)
     .single();
 
@@ -219,7 +219,7 @@ export async function calculateMatchPointsAction(matchId: string) {
                   content += `${medals[idx]} **${p.name}**: ${p.netPoints} pts [Pronóstico: ${p.pred}]${penaltyText}\n`;
                 });
 
-                await supabase
+                const { error: postError } = await supabase
                   .from("league_posts")
                   .insert({
                     id: generatePostId(),
@@ -229,6 +229,10 @@ export async function calculateMatchPointsAction(matchId: string) {
                     is_announcement: true,
                     announcement_type: "match_result"
                   });
+
+                if (postError) {
+                  console.error("Error inserting match result announcement:", postError);
+                }
               }
             }
           }
@@ -351,6 +355,8 @@ export async function sendMatchdayAnnouncementAction(matchDate: string) {
 
             if (!postError) {
               announcementsSent++;
+            } else {
+              console.error("Error inserting matchday result announcement:", postError);
             }
           }
         }
