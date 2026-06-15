@@ -984,7 +984,7 @@ export default function AdminPage() {
                           }`}
                         >
                           {/* Info Block */}
-                          <div className="min-w-0 space-y-1 md:w-5/12">
+                          <div className="min-w-0 space-y-1 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-[9px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded">
                                 {match.id}
@@ -1024,7 +1024,7 @@ export default function AdminPage() {
                           </div>
 
                           {/* Score Input block */}
-                          <div className="flex items-center justify-start md:justify-center gap-2 w-full md:w-3/12">
+                          <div className="flex items-center justify-start md:justify-center gap-2 w-full md:w-auto shrink-0">
                             <input
                               type="text"
                               placeholder="0"
@@ -1045,7 +1045,7 @@ export default function AdminPage() {
                           </div>
 
                           {/* Actions Buttons */}
-                          <div className="flex items-center gap-2 shrink-0 w-full md:w-4/12 justify-end">
+                          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
                             {/* Edit Details button */}
                             <button
                               onClick={() => handleStartEditMatch(match)}
