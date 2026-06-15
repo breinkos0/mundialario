@@ -1001,15 +1001,15 @@ export default function LandingPage() {
           <Home className="w-5 h-5 text-violet-700" />
           <span className="text-[10px] font-extrabold text-violet-700 uppercase tracking-wider">Inicio</span>
         </Link>
-        <Link href="/predictions" className="flex flex-col items-center gap-1 group">
+        <Link href={getLinkHref("/dashboard?tab=predictions")} className="flex flex-col items-center gap-1 group">
           <SoccerBallIcon className="w-5 h-5 text-lime-500 hover:text-lime-600 transition-colors" />
           <span className="text-[10px] font-extrabold text-lime-500 uppercase tracking-wider">Jugar</span>
         </Link>
-        <Link href="/ranking" className="flex flex-col items-center gap-1 group">
+        <Link href={getLinkHref("/dashboard?tab=ranking")} className="flex flex-col items-center gap-1 group">
           <Trophy className="w-5 h-5 text-orange-500 hover:text-orange-600 transition-colors" />
           <span className="text-[10px] font-extrabold text-orange-500 uppercase tracking-wider">Ranking</span>
         </Link>
-        <Link href="/leagues" className="flex flex-col items-center gap-1 group">
+        <Link href={getLinkHref("/dashboard?tab=leagues")} className="flex flex-col items-center gap-1 group">
           <Users className="w-5 h-5 text-blue-600 hover:text-blue-700 transition-colors" />
           <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Grupos</span>
         </Link>
