@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -101,6 +101,22 @@ export default function DashboardPage() {
   const [predScoreA, setPredScoreA] = useState(0);
   const [predScoreB, setPredScoreB] = useState(0);
   const [showConfirmPenaltyModal, setShowConfirmPenaltyModal] = useState<Match | null>(null);
+
+  const firstRealPredictionKickoff: Date | null = useMemo(() => {
+    let minKickoff: Date | null = null;
+    for (const [matchId, pred] of Object.entries(predictions)) {
+      if (pred.pred_a >= 0 && pred.pred_b >= 0) {
+        const match = matches.find(m => m.id === matchId);
+        if (match && match.kickoff_time) {
+          const kickoff = new Date(match.kickoff_time);
+          if (!minKickoff || kickoff.getTime() < minKickoff.getTime()) {
+            minKickoff = kickoff;
+          }
+        }
+      }
+    }
+    return minKickoff;
+  }, [predictions, matches]);
 
   // Keep track of values in refs to avoid stale interval closures
   const predScoreARef = useRef(0);
@@ -1375,10 +1391,23 @@ export default function DashboardPage() {
                                         </>
                                       ) : (
                                         <div className="flex items-center justify-center gap-2 w-full py-1">
-                                          <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full font-black text-xs inline-flex items-center gap-1 border border-red-100">
-                                            <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-                                            <span>Sin Pronóstico (-1 pt de penalización)</span>
-                                          </span>
+                                          {(() => {
+                                            const isBeforeFirstPrediction = !match.kickoff_time || !firstRealPredictionKickoff || new Date(match.kickoff_time).getTime() < firstRealPredictionKickoff.getTime();
+                                            if (isBeforeFirstPrediction) {
+                                              return (
+                                                <span className="bg-slate-50 text-slate-500 px-3 py-1 rounded-full font-black text-xs inline-flex items-center gap-1 border border-slate-200">
+                                                  <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
+                                                  <span>Sin Pronóstico</span>
+                                                </span>
+                                              );
+                                            }
+                                            return (
+                                              <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full font-black text-xs inline-flex items-center gap-1 border border-red-100">
+                                                <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                                                <span>Sin Pronóstico (-1 pt de penalización)</span>
+                                              </span>
+                                            );
+                                          })()}
                                         </div>
                                       )}
                                     </div>
